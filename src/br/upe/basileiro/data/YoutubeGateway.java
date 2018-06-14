@@ -1,29 +1,17 @@
 package br.upe.basileiro.data;
 
-
-import com.google.api.client.googleapis.json.GoogleJsonResponseException;
-import com.google.api.client.http.HttpRequest;
-import com.google.api.client.http.HttpRequestInitializer;
-import com.google.api.client.http.HttpTransport;
-import com.google.api.client.http.javanet.NetHttpTransport;
-import com.google.api.client.json.JsonFactory;
-import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.youtube.YouTube;
-import com.google.api.services.youtube.YouTube.Search;
+import com.google.api.services.youtube.model.CommentSnippet;
 import com.google.api.services.youtube.model.CommentThread;
 import com.google.api.services.youtube.model.CommentThreadListResponse;
 import com.google.api.services.youtube.model.ResourceId;
 import com.google.api.services.youtube.model.SearchListResponse;
 import com.google.api.services.youtube.model.SearchResult;
-import com.google.api.services.youtube.model.Thumbnail;
+import com.rabbitmq.client.Channel;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Properties;
 
 /**
  * Print a list of videos matching a search term.
@@ -36,20 +24,24 @@ public class YoutubeGateway {
      * Define a global variable that identifies the name of a file that
      * contains the developer's API key.
      */
-    private static final String PROPERTIES_FILENAME = "youtube.properties";
-
+	
     private static final long NUMBER_OF_VIDEOS_RETURNED = 25;
 
     private YouTube youtube;
     private String apiKey;
+    private Channel rabbitChannel;
+    private String queueName;
     
-    public YoutubeGateway(YouTube youtube, String apiKey) {
+    public YoutubeGateway(YouTube youtube, String apiKey,  Channel rabbitChannel, String queueName) {
     	this.youtube = youtube;
     	this.apiKey = apiKey;
+    	this.rabbitChannel = rabbitChannel;
+    	this.queueName = queueName;
     }
       
-    public void search(String query) {
+    public List<SearchResult> search(String query) {
         YouTube.Search.List search = null;
+        List<SearchResult> searchResultList = null;
         
 		try {
 			search = this.youtube.search().list("id,snippet");
@@ -61,44 +53,45 @@ public class YoutubeGateway {
 	        search.setMaxResults(NUMBER_OF_VIDEOS_RETURNED);
 			
 	        SearchListResponse searchResponse = search.execute();
-	        List<SearchResult> searchResultList = searchResponse.getItems();
-	        prettyPrint(searchResultList.iterator());
+	        searchResultList = searchResponse.getItems();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		
+		return searchResultList;
     }
     
-    public void getComments(String videoId) {
-        CommentThreadListResponse videoCommentsListResponse;
-		try {
-			videoCommentsListResponse = youtube.commentThreads()
-			        .list("snippet").setVideoId(videoId).setTextFormat("plainText").execute();
-	        List<CommentThread> videoComments = videoCommentsListResponse.getItems();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-    }
-
-    private static void prettyPrint(Iterator<SearchResult> iteratorSearchResults) {
-    	
-        if (!iteratorSearchResults.hasNext()) {
-            System.out.println(" There aren't any results for your query.");
-        }
-
-        while (iteratorSearchResults.hasNext()) {
+    /* Polling getComments() */
+    public void getComments(String query) {    	
+    	List<SearchResult> searchResultList = this.search(query);
+    	Iterator<SearchResult> iteratorSearchResults = searchResultList.iterator();
+    	CommentThreadListResponse videoCommentsListResponse;
+		
+    	while (iteratorSearchResults.hasNext()) {
             SearchResult singleVideo = iteratorSearchResults.next();
             ResourceId rId = singleVideo.getId();
-
-            // Confirm that the result represents a video. Otherwise, the
-            // item will not contain a video ID.
-            if (rId.getKind().equals("youtube#video")) {
-                Thumbnail thumbnail = singleVideo.getSnippet().getThumbnails().getDefault();
-
-                System.out.println(" Video Id" + rId.getVideoId());
-                System.out.println(" Title: " + singleVideo.getSnippet().getTitle());
-                System.out.println(" Thumbnail: " + thumbnail.getUrl());
-                System.out.println("\n-------------------------------------------------------------\n");
-            }
+            
+            try {
+    			videoCommentsListResponse = this.youtube.commentThreads()
+    			        .list("snippet").setVideoId(rId.getVideoId()).setTextFormat("plainText")
+    			        .setKey(this.apiKey).execute();
+    	        List<CommentThread> videoComments = videoCommentsListResponse.getItems();
+    	        
+    	        if (videoComments.isEmpty()) {
+    	                System.out.println("Can't get video comments.");
+	            } else {
+	                for (CommentThread videoComment : videoComments) {
+	                    CommentSnippet snippet = videoComment.getSnippet().getTopLevelComment()
+	                            .getSnippet();
+	                    
+	                    // Add comment text to queue
+						this.rabbitChannel.basicPublish("", this.queueName, null, snippet.getTextOriginal().getBytes());
+	                }
+	            }
+    		} catch (IOException e) {
+    			e.printStackTrace();
+    		}           
         }
     }
+    
 }
