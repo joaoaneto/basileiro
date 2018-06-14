@@ -1,5 +1,9 @@
 package br.upe.basileiro.data;
 
+import java.io.IOException;
+import java.util.Iterator;
+import java.util.List;
+
 import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.CommentSnippet;
 import com.google.api.services.youtube.model.CommentThread;
@@ -9,36 +13,29 @@ import com.google.api.services.youtube.model.SearchListResponse;
 import com.google.api.services.youtube.model.SearchResult;
 import com.rabbitmq.client.Channel;
 
-import java.io.IOException;
-import java.util.Iterator;
-import java.util.List;
-
-/**
- * Print a list of videos matching a search term.
- *
- * @author Jeremy Walker
- */
-public class YoutubeGateway {
-
-    /**
-     * Define a global variable that identifies the name of a file that
-     * contains the developer's API key.
-     */
-	
-    private static final long NUMBER_OF_VIDEOS_RETURNED = 25;
+public class YoutubeCommentsThread extends Thread {
 
     private YouTube youtube;
     private String apiKey;
     private Channel rabbitChannel;
     private String queueName;
+    private String query;
     
-    public YoutubeGateway(YouTube youtube, String apiKey,  Channel rabbitChannel, String queueName) {
+    private static final long NUMBER_OF_VIDEOS_RETURNED = 25;
+    
+    public YoutubeCommentsThread(YouTube youtube, String apiKey,  Channel rabbitChannel, String queueName, String query) {
     	this.youtube = youtube;
     	this.apiKey = apiKey;
     	this.rabbitChannel = rabbitChannel;
     	this.queueName = queueName;
+    	this.query = query;
     }
-      
+	
+	@Override
+	public void run() {
+		this.getComments(this.query);
+	}
+	
     public List<SearchResult> search(String query) {
         YouTube.Search.List search = null;
         List<SearchResult> searchResultList = null;
@@ -60,10 +57,10 @@ public class YoutubeGateway {
 		
 		return searchResultList;
     }
-    
+	
     /* Polling getComments() */
     public void getComments(String query) {    	
-    	List<SearchResult> searchResultList = this.search(query);
+    	List<SearchResult> searchResultList = search(query);
     	Iterator<SearchResult> iteratorSearchResults = searchResultList.iterator();
     	CommentThreadListResponse videoCommentsListResponse;
 		
@@ -93,5 +90,5 @@ public class YoutubeGateway {
     		}           
         }
     }
-    
+	
 }
