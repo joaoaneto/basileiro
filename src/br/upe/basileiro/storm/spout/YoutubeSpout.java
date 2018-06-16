@@ -28,14 +28,14 @@ public class YoutubeSpout implements IRichSpout {
 	private static final long serialVersionUID = 1L;
 	private SpoutOutputCollector collector;
 	private Channel channel;
+
+	private String[] keywords;
+	private String namespace;
 	
-	public String[] policyKeywordSet = {
-			"eleições",
-			"política",
-			"ciro",
-			"bolsonaro",
-			"temer",
-	};
+	public YoutubeSpout(String[] keywords, String namespace) {
+		this.keywords = keywords;
+		this.namespace = namespace;
+	}
 
 	@Override
 	public void open(Map arg0, TopologyContext arg1, SpoutOutputCollector arg2) {
@@ -43,7 +43,7 @@ public class YoutubeSpout implements IRichSpout {
 		
 		RabbitConnection rabbit = new RabbitConnection("localhost");
 		
-		this.channel = rabbit.getChannel("youtube-politica");
+		this.channel = rabbit.getChannel(this.namespace);
 		
 		YoutubeConnection youtube = new YoutubeConnection("basileiro");
 		
@@ -51,7 +51,7 @@ public class YoutubeSpout implements IRichSpout {
 				youtube.getConnection(),
 				"AIzaSyC2z31-8V5F2QYk64K6z9QV3HFIKuh2_9s",
 				this.channel,
-				"youtube-politica",
+				this.namespace,
 				"Bolsonaro");
 		
 		yt.start();
@@ -70,7 +70,7 @@ public class YoutubeSpout implements IRichSpout {
 			  }
 			};
 			try {
-				channel.basicConsume("youtube-politica", true, consumer);
+				channel.basicConsume(this.namespace, true, consumer);
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
