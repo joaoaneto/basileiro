@@ -22,8 +22,20 @@ import br.upe.basileiro.data.TwitterStreamingGateway;
 
 public class TwitterSpout implements IRichSpout {
 	
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	private SpoutOutputCollector collector;
 	private Channel channel;
+	
+	private String[] keywords;
+	private String namespace;
+	
+	public TwitterSpout(String[] keywords, String namespace) {
+		this.keywords = keywords;
+		this.namespace = namespace;
+	}
 	
 	@Override
 	public void open(Map arg0, TopologyContext arg1, SpoutOutputCollector arg2) {
@@ -31,16 +43,19 @@ public class TwitterSpout implements IRichSpout {
 		
 		RabbitConnection rabbit = new RabbitConnection("localhost");
 		
-		this.channel = rabbit.getChannel("twitter-copa");
+		this.channel = rabbit.getChannel(this.namespace);
 		
-		TwitterConnection twitterConnection = new TwitterConnection();
+		TwitterConnection twitter = new TwitterConnection();
 		
 		TwitterStreamingGateway tsg = new TwitterStreamingGateway(
-				twitterConnection.getTwitterStreamConnection(),
+				twitter.getStreamConnection(),
 				this.channel,
-				"twitter-copa");
+				this.namespace);
 
-		tsg.getStreamTweets(new double[][]{new double[]{-126.562500,30.448674}, new double[]{-61.171875,44.087585}}, new String[]{"pt"}, new String[]{"Neymar", "Brasil", "Hexa"});
+		tsg.getStreamTweets(new double[][]{
+				new double[]{-126.562500,30.448674},
+				new double[]{-61.171875,44.087585}},
+				new String[]{"pt"}, this.keywords);
 	}
 
 	@Override
@@ -56,7 +71,7 @@ public class TwitterSpout implements IRichSpout {
 			  }
 			};
 			try {
-				channel.basicConsume("twitter-copa", true, consumer);
+				channel.basicConsume(this.namespace, true, consumer);
 			} catch (IOException e) {
 				e.printStackTrace();
 			}

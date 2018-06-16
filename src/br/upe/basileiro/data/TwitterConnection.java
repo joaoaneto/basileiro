@@ -39,11 +39,7 @@ public class TwitterConnection {
 		this.twitterStream = tsf.getInstance();
 	}
 	
-	public Twitter getTwitterConnection() {
-		return this.twitter;
-	}
-	
-	public TwitterStream getTwitterStreamConnection() {
+	public TwitterStream getStreamConnection() {
 		return this.twitterStream;
 	}
 
