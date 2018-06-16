@@ -59,7 +59,7 @@ public class TweetFilterBolt implements IRichBolt {
 
 	@Override
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {
-		declarer.declare(new Fields("tweet"));
+		declarer.declare(new Fields("data"));
 	}
 
 	@Override
