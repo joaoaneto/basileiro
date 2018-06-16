@@ -22,7 +22,7 @@ public class YoutubeCommentsThread extends Thread {
     private String query;
     
     private static final long NUMBER_OF_VIDEOS_RETURNED = 25;
-    
+
     public YoutubeCommentsThread(YouTube youtube, String apiKey,  Channel rabbitChannel, String queueName, String query) {
     	this.youtube = youtube;
     	this.apiKey = apiKey;
@@ -30,7 +30,7 @@ public class YoutubeCommentsThread extends Thread {
     	this.queueName = queueName;
     	this.query = query;
     }
-	
+
 	@Override
 	public void run() {
 		this.getComments(this.query);

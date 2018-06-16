@@ -24,7 +24,7 @@ public class CommentFilterBolt implements IRichBolt {
 	
 	@Override
 	public void execute(Tuple input) {
-		String comment = input.getStringByField("commment");
+		String comment = input.getStringByField("comment");
 		String filteredComment;
 
 		/* Step 1. Normalize and remove special characters from string  */

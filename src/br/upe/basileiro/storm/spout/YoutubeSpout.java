@@ -49,7 +49,7 @@ public class YoutubeSpout implements IRichSpout {
 		
 		YoutubeCommentsThread yt = new YoutubeCommentsThread(
 				youtube.getConnection(),
-				"AIzaSyC2z31-8V5F2QYk64K6z9QV3HFIKuh2_9s",
+				"AIzaSyDn-aCzHIpQag3xbMlt_PZu2h6vMcDo5ew",
 				this.channel,
 				this.namespace,
 				"Bolsonaro");
