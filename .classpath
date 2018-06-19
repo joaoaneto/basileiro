@@ -19,5 +19,8 @@
 	<classpathentry kind="lib" path="/home/jnt/Downloads/amqp-client-4.0.2.jar"/>
 	<classpathentry kind="lib" path="/home/jnt/Downloads/slf4j-api-1.7.21.jar"/>
 	<classpathentry kind="lib" path="/home/jnt/Downloads/slf4j-simple-1.7.22.jar"/>
+	<classpathentry kind="lib" path="/home/jnt/eclipse-workshop/gtranslateapi-1.0.jar"/>
+	<classpathentry kind="lib" path="/home/jnt/eclipse-workshop/stanford-corenlp-models-current.jar"/>
+	<classpathentry kind="lib" path="/home/jnt/eclipse-workshop/twitter-sentiment-analysis.jar"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>
