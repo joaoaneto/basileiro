@@ -1,8 +1,11 @@
 package br.upe.basileiro.data;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+
+import org.apache.storm.shade.org.apache.commons.lang.SerializationUtils;
 
 import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.CommentSnippet;
@@ -13,6 +16,8 @@ import com.google.api.services.youtube.model.SearchListResponse;
 import com.google.api.services.youtube.model.SearchResult;
 import com.rabbitmq.client.Channel;
 
+import br.upe.basileiro.models.Comment;
+
 public class YoutubeCommentsThread extends Thread {
 
     private YouTube youtube;
@@ -20,6 +25,8 @@ public class YoutubeCommentsThread extends Thread {
     private Channel rabbitChannel;
     private String queueName;
     private String query;
+    
+    private ArrayList<Comment> comments = new ArrayList<Comment>();
     
     private static final long NUMBER_OF_VIDEOS_RETURNED = 25;
 
@@ -33,7 +40,10 @@ public class YoutubeCommentsThread extends Thread {
 
 	@Override
 	public void run() {
-		this.getComments(this.query);
+		/* Pooling */
+		while(true) {			
+			this.getComments(this.query);		
+		}
 	}
 	
     public List<SearchResult> search(String query) {
@@ -80,9 +90,15 @@ public class YoutubeCommentsThread extends Thread {
 	                for (CommentThread videoComment : videoComments) {
 	                    CommentSnippet snippet = videoComment.getSnippet().getTopLevelComment()
 	                            .getSnippet();
+	                    	                    
+	                    Comment comment = new Comment(snippet.getTextOriginal(),
+	                    							  snippet.getPublishedAt(),
+	                    							  snippet.getLikeCount());
 	                    
-	                    // Add comment text to queue
-						this.rabbitChannel.basicPublish("", this.queueName, null, snippet.getTextOriginal().getBytes());
+	                    if(!this.comments.contains(comment)) {
+	                    	this.comments.add(comment);
+							this.rabbitChannel.basicPublish("", this.queueName, null, SerializationUtils.serialize(comment));
+	                    }    
 	                }
 	            }
     		} catch (IOException e) {

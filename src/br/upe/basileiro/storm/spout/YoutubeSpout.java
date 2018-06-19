@@ -1,8 +1,10 @@
 package br.upe.basileiro.storm.spout;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Map;
 
+import org.apache.storm.shade.org.apache.commons.lang.SerializationUtils;
 import org.apache.storm.spout.SpoutOutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.IRichSpout;
@@ -19,6 +21,7 @@ import com.rabbitmq.client.Envelope;
 import br.upe.basileiro.data.RabbitConnection;
 import br.upe.basileiro.data.YoutubeCommentsThread;
 import br.upe.basileiro.data.YoutubeConnection;
+import br.upe.basileiro.models.Comment;
 
 public class YoutubeSpout implements IRichSpout {
 	
@@ -52,7 +55,7 @@ public class YoutubeSpout implements IRichSpout {
 				"AIzaSyDn-aCzHIpQag3xbMlt_PZu2h6vMcDo5ew",
 				this.channel,
 				this.namespace,
-				"Bolsonaro");
+				Arrays.toString(this.keywords));
 		
 		yt.start();
 	}
@@ -64,9 +67,7 @@ public class YoutubeSpout implements IRichSpout {
 			  public void handleDelivery(String consumerTag, Envelope envelope,
 			                             AMQP.BasicProperties properties, byte[] body)
 			      throws IOException {
-			    String message = new String(body, "UTF-8");
-			    
-			    collector.emit(new Values(message));
+			    collector.emit(new Values(body));
 			  }
 			};
 			try {
