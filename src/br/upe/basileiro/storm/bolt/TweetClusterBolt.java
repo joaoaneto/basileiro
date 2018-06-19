@@ -1,7 +1,5 @@
 package br.upe.basileiro.storm.bolt;
 
-import java.text.Normalizer;
-import java.util.Arrays;
 import java.util.Map;
 
 import org.apache.storm.shade.org.apache.commons.lang.SerializationUtils;
@@ -13,18 +11,16 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
+import com.abinj.twittersentimentanalysis.TweetWithSentiment;
+import com.abinj.twittersentimentanalysis.analyzer.SentimentAnalyzer;
+
+import br.upe.basileiro.data.GoogleTranslate;
 import br.upe.basileiro.models.Tweet;
 
-public class TweetFilterBolt implements IRichBolt {
+public class TweetClusterBolt implements IRichBolt {
 	
 	private static final long serialVersionUID = 1L;
-	
 	private OutputCollector collector;
-	private String[] keywords;
-
-	public TweetFilterBolt(String[] keywords) {
-		this.keywords = keywords;
-	}
 
 	@Override
 	public void prepare(Map arg0, TopologyContext arg1, OutputCollector arg2) {
@@ -32,32 +28,19 @@ public class TweetFilterBolt implements IRichBolt {
 	}
 	
 	@Override
-	public void execute(Tuple input) {	
+	public void execute(Tuple input) {
 		Tweet tweet = (Tweet) SerializationUtils.deserialize(input.getBinaryByField("tweet"));
-		String filteredTweet;
-		String[] wordsFromTweet;
-		int presenceCounter = 0;
+
+		String type = input.getStringByField("type");
+				
+		SentimentAnalyzer sentimentAnalyzer = new SentimentAnalyzer();
 		
-		/* Step 1. Normalize and remove special characters from string  */
-		filteredTweet = Normalizer
-				.normalize(tweet.getMessage(), Normalizer.Form.NFD)
-				.replaceAll("[^a-zA-Z0-9\\s+]", "");
+		GoogleTranslate gt = new GoogleTranslate();
 		
-		/* Step 2. Convert all characters to lower case */
-		filteredTweet = filteredTweet.toLowerCase();
-		
-		/* Step 3. Verify if the majority data is useful for application purpose */
-		wordsFromTweet = filteredTweet.split("\\s+");
-		for(String word: wordsFromTweet) {
-			if(Arrays.stream(this.keywords).anyMatch(word::equals)) {
-				presenceCounter++;
-			}
-		}
-		
-		if(presenceCounter >= 2) {
-			tweet.setMessage(filteredTweet);
-			this.collector.emit(new Values(SerializationUtils.serialize(tweet), "politics"));
-			presenceCounter = 0;
+	    TweetWithSentiment tweetWithSentiment = sentimentAnalyzer.findSentiment(gt.translate(tweet.getMessage()));
+		if(tweetWithSentiment != null) {
+			tweet.setClassification(tweetWithSentiment.getCssClass());
+			this.collector.emit(new Values(SerializationUtils.serialize(tweet), type));
 		}
 	}
 
