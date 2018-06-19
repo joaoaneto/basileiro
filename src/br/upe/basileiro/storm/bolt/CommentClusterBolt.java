@@ -1,6 +1,5 @@
 package br.upe.basileiro.storm.bolt;
 
-import java.text.Normalizer;
 import java.util.Map;
 
 import org.apache.storm.shade.org.apache.commons.lang.SerializationUtils;
@@ -12,12 +11,15 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
+import com.abinj.twittersentimentanalysis.TweetWithSentiment;
+import com.abinj.twittersentimentanalysis.analyzer.SentimentAnalyzer;
+
+import br.upe.basileiro.data.GoogleTranslate;
 import br.upe.basileiro.models.Comment;
 
-public class CommentFilterBolt implements IRichBolt {
+public class CommentClusterBolt implements IRichBolt {
 	
 	private static final long serialVersionUID = 1L;
-	
 	private OutputCollector collector;
 
 	@Override
@@ -27,21 +29,19 @@ public class CommentFilterBolt implements IRichBolt {
 	
 	@Override
 	public void execute(Tuple input) {
-//		String comment = input.getStringByField("comment");
 		Comment comment = (Comment) SerializationUtils.deserialize(input.getBinaryByField("comment"));
-		String filteredComment;
-
-		/* Step 1. Normalize and remove special characters from string  */
-		filteredComment = Normalizer
-				.normalize(comment.getMessage(), Normalizer.Form.NFD)
-				.replaceAll("[^a-zA-Z0-9\\s+]", "");
+		String type = input.getStringByField("type");
 		
-		/* Step 2. Convert all characters to lower case */
-		filteredComment = filteredComment.toLowerCase();
-
-		if(!filteredComment.isEmpty()) {
-			comment.setMessage(filteredComment);
-			this.collector.emit(new Values(SerializationUtils.serialize(comment), "cup"));
+		System.out.println(comment.getMessage());
+		
+		SentimentAnalyzer sentimentAnalyzer = new SentimentAnalyzer();
+		
+		GoogleTranslate gt = new GoogleTranslate();
+		
+	    TweetWithSentiment commentWithSentiment = sentimentAnalyzer.findSentiment(gt.translate(comment.getMessage()));
+		if(commentWithSentiment != null) {
+			comment.setClassification(commentWithSentiment.getCssClass());
+			this.collector.emit(new Values(SerializationUtils.serialize(comment), type));
 		}
 	}
 
