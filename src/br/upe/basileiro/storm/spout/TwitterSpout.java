@@ -64,10 +64,8 @@ public class TwitterSpout implements IRichSpout {
 			  @Override
 			  public void handleDelivery(String consumerTag, Envelope envelope,
 			                             AMQP.BasicProperties properties, byte[] body)
-			      throws IOException {
-			    String message = new String(body, "UTF-8");
-			    
-			    collector.emit(new Values(message));
+			      throws IOException {			    
+			    collector.emit(new Values(body));
 			  }
 			};
 			try {

@@ -1,6 +1,10 @@
 package br.upe.basileiro.data;
 
+import org.apache.storm.shade.org.apache.commons.lang.SerializationUtils;
+
 import com.rabbitmq.client.Channel;
+
+import br.upe.basileiro.models.Tweet;
 import twitter4j.FilterQuery;
 import twitter4j.StallWarning;
 import twitter4j.Status;
@@ -46,8 +50,12 @@ public class TwitterStreamingGateway {
 			
 			@Override
 			public void onStatus(Status status) {
+				Tweet tweet = new Tweet(status.getText(),
+										status.getFavoriteCount(),
+										status.getRetweetCount(),
+										status.getCreatedAt());
 				try {	
-					rabbitChannel.basicPublish("", queueName, null, status.getText().getBytes());
+					rabbitChannel.basicPublish("", queueName, null, SerializationUtils.serialize(tweet));
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
